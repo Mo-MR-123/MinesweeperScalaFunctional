@@ -96,15 +96,13 @@ private def createCoordsSurroundingCellsFunc(
                                           yr: List[Int],
                                           currCood: (Int, Int)
                                         ): List[(Int, Int)] = {
-
   val mapped: List[(Int, Int)] = xr.flatMap(x => yr.map(y => (x, y)))
   mapped.filter((x, y) => !NotInboundsFunc(grid, x, y) && (x, y) != currCood)
-
 }
 
 private def dfsFunc(grid: GridFunc, x: Int, y: Int): GridFunc = {
 
-  println(s"curr x,y: $x, $y")
+  //  println(s"curr x,y: $x, $y")
   val l_coords: List[(Int, Int)] = createCoordsSurroundingCellsFunc(
     grid,
     (x - 1 to x + 1).toList,
