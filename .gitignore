@@ -1,8 +1,15 @@
 # Project exclude paths
 /project/project/target/
+/project/project/metals.sbt
+/project/project/project/target/
+/project/project/project/project/
+/project/project/project/metals.sbt
 /project/target/
+/project/metals.sbt
 /target/
 /target/scala-3.3.3/classes/
 *.iml
 .DS_Store
 .idea/
+.bloop
+.metals

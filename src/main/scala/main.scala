@@ -1,19 +1,28 @@
 package org.scala.minesweeper
 
 import org.scala.minesweeper
+import scala.util.Random
 
 import util.control.Breaks.*
 import scala.io.StdIn
 
+// Immutable GameStatus Classes
+sealed trait GameStatus
+case object Won extends GameStatus
+case object Lost extends GameStatus
+case class InvalidInput(msg: String) extends GameStatus
+
+// Immutable Cell Classes
 sealed trait Cell
 case class Mijn(open: Boolean) extends Cell
 case class Leeg(open: Boolean) extends Cell
 case class Nummer(num: Int) extends Cell
 case class Marked(cell: Cell) extends Cell
 
-case class GridFunc(cells: List[List[Cell]])
+// Immutable Grid 
+case class Grid(cells: List[List[Cell]])
 
-def markFunc(grid: GridFunc, x: Int, y: Int): GridFunc = {
+def mark(grid: Grid, x: Int, y: Int): Grid = {
   grid.cells(y)(x) match {
     case Marked(cell) =>
       updateGrid(grid, x, y, cell)
@@ -22,7 +31,7 @@ def markFunc(grid: GridFunc, x: Int, y: Int): GridFunc = {
   }
 }
 
-private def totalOpenedFunc(grid: GridFunc): Int = {
+private def totalOpened(grid: Grid): Int = {
   grid.cells.map(
     arr => arr.count {
       case Mijn(o) if o => true
@@ -34,7 +43,7 @@ private def totalOpenedFunc(grid: GridFunc): Int = {
   ).sum
 }
 
-private def nonMineCellsFunc(grid: GridFunc) = {
+private def nonMineCells(grid: Grid) = {
   grid.cells.map(
     arr => arr.count {
       case Mijn(_) => false
@@ -43,21 +52,21 @@ private def nonMineCellsFunc(grid: GridFunc) = {
   ).sum
 }
 
-private def isGameWonFunc(grid: GridFunc): Boolean = {
-  val totalOpen = totalOpenedFunc(grid)
-  totalOpen == nonMineCellsFunc(grid)
+private def isGameWon(grid: Grid): Boolean = {
+  val totalOpen = totalOpened(grid)
+  totalOpen == nonMineCells(grid)
 }
 
-private def isGameLostFunc(grid: GridFunc): Boolean = {
+private def isGameLost(grid: Grid): Boolean = {
   grid.cells.exists(row => row.contains(Mijn(true)))
 }
 
 
-def openFunc(grid: GridFunc, x: Int, y: Int): GridFunc = {
-  if (NotInboundsFunc(grid, x, y))
+def open(grid: Grid, x: Int, y: Int): Grid = {
+  if (NotInbounds(grid, x, y))
     return grid
 
-  val cellSurroundingMines: List[(Int, Int)] = numSurroundingMinesFunc(grid, x, y)
+  val cellSurroundingMines: List[(Int, Int)] = numSurroundingMines(grid, x, y)
   if (cellSurroundingMines.nonEmpty) {
     updateGrid(grid, x, y, Nummer(cellSurroundingMines.size))
   } else {
@@ -66,14 +75,14 @@ def openFunc(grid: GridFunc, x: Int, y: Int): GridFunc = {
         updateGrid(grid, x, y, Mijn(true))
       case Leeg(o) if !o =>
         val newGrid = updateGrid(grid, x, y, Leeg(true))
-        dfsFunc(newGrid, x, y)
+        dfs(newGrid, x, y)
       case _ => grid
     }
   }
 }
 
-def numSurroundingMinesFunc(grid: GridFunc, x: Int, y: Int): List[(Int, Int)] = {
-  val surroundingCoords = createCoordsSurroundingCellsFunc(
+def numSurroundingMines(grid: Grid, x: Int, y: Int): List[(Int, Int)] = {
+  val surroundingCoords = createCoordsSurroundingCells(
     grid,
     (x - 1 to x + 1).toList,
     (y - 1 to y + 1).toList,
@@ -81,29 +90,28 @@ def numSurroundingMinesFunc(grid: GridFunc, x: Int, y: Int): List[(Int, Int)] = 
   )
   surroundingCoords.filter(
     (xb, yb) =>
-      !NotInboundsFunc(grid, xb, yb) && (xb, yb) != (x, y) &&
+      !NotInbounds(grid, xb, yb) && (xb, yb) != (x, y) &&
         ( grid.cells(yb)(xb) == Mijn(false) || grid.cells(yb)(xb) == Mijn(true) )
   )
 }
 
-private def NotInboundsFunc(grid: GridFunc, x: Int, y: Int): Boolean =
+private def NotInbounds(grid: Grid, x: Int, y: Int): Boolean =
   (y < 0 || y >= grid.cells.length) ||
     (x < 0 || x >= grid.cells.head.length)
 
-private def createCoordsSurroundingCellsFunc(
-                                          grid: GridFunc,
+private def createCoordsSurroundingCells(
+                                          grid: Grid,
                                           xr: List[Int],
                                           yr: List[Int],
                                           currCood: (Int, Int)
                                         ): List[(Int, Int)] = {
   val mapped: List[(Int, Int)] = xr.flatMap(x => yr.map(y => (x, y)))
-  mapped.filter((x, y) => !NotInboundsFunc(grid, x, y) && (x, y) != currCood)
+  mapped.filter((x, y) => !NotInbounds(grid, x, y) && (x, y) != currCood)
 }
 
-private def dfsFunc(grid: GridFunc, x: Int, y: Int): GridFunc = {
+private def dfs(grid: Grid, x: Int, y: Int): Grid = {
 
-  //  println(s"curr x,y: $x, $y")
-  val l_coords: List[(Int, Int)] = createCoordsSurroundingCellsFunc(
+  val l_coords: List[(Int, Int)] = createCoordsSurroundingCells(
     grid,
     (x - 1 to x + 1).toList,
     (y - 1 to y + 1).toList,
@@ -114,26 +122,26 @@ private def dfsFunc(grid: GridFunc, x: Int, y: Int): GridFunc = {
   l_coords.foldLeft(grid) { (accGrid, coord) =>
     val (xb, yb) = coord
     val currCell = accGrid.cells(yb)(xb)
-    val surroundingMines = numSurroundingMinesFunc(accGrid, xb, yb)
+    val surroundingMines = numSurroundingMines(accGrid, xb, yb)
     if (surroundingMines.nonEmpty) {
       updateGrid(accGrid, xb, yb, Nummer(surroundingMines.size))
     } else {
       currCell match {
         case Leeg(o) if !o =>
           val newGrid = updateGrid(accGrid, xb, yb, Leeg(true))
-          dfsFunc(newGrid, xb, yb) // Recursively call with the updated grid
+          dfs(newGrid, xb, yb) // Recursively call with the updated grid
         case _ => accGrid // Return the accumulator grid unchanged
       }
     }
   }
 }
 
-def updateGrid(grid: GridFunc, i_x: Int, i_y: Int, new_val: Cell): GridFunc = {
+def updateGrid(grid: Grid, i_x: Int, i_y: Int, new_val: Cell): Grid = {
   val new_lst: List[Cell] = grid.cells(i_y).updated(i_x, new_val)
-  GridFunc(grid.cells.take(i_y) ::: new_lst :: grid.cells.drop(i_y + 1))
+  Grid(grid.cells.take(i_y) ::: new_lst :: grid.cells.drop(i_y + 1))
 }
 
-def gridFuncPrint(grid: GridFunc, gameEnded: Boolean = false): Unit = {
+def gridPrint(grid: Grid, gameEnded: Boolean = false): Unit = {
   for (w <- grid.cells.head.indices)
     print("---")
   println()
@@ -162,72 +170,122 @@ def gridFuncPrint(grid: GridFunc, gameEnded: Boolean = false): Unit = {
   println()
 }
 
-private val VALID_ACTIONS_STR: List[String] = List(
-  "o",
-  "m"
-)
+def initGrid(width: Int, height: Int, coordsMines: List[(Int, Int)]): Grid = {
+  Grid(
+    (
+      for (h <- 0 until height) yield 
+      (
+        for (w <- 0 until width) yield
+          if (coordsMines.contains((w,h)))
+            Mijn(false)
+          else
+            Leeg(false)
+      ).toList
+    ).toList
+  )
+}
+
+def createRandGenerator(randSeed: Option[Int]): Random = randSeed match {
+  case Some(value) => new Random(value)
+  case None => new Random
+}
+
+def initGridRandMines(
+  width: Int,
+  height: Int, 
+  amountMines: Int, 
+  randSeed: Option[Int]
+): Grid = {
+  assert(
+    amountMines < width * height, 
+    s"Amount of mines to be created, $amountMines, exceeds total amount of cells in the grid (${width*height})!"
+  )
+
+  val rand = createRandGenerator(randSeed)
+
+  def generateSetCoords(coordsSet: Set[(Int, Int)]): Set[(Int, Int)] = {  
+    if (coordsSet.size < amountMines) {
+      val currRandomCoords: (Int, Int) = (rand.nextInt(width), rand.nextInt(height))
+      generateSetCoords(coordsSet + currRandomCoords)
+    } else {
+      coordsSet
+    }
+  }
+
+  initGrid(width, height, generateSetCoords(Set.empty[(Int, Int)]).toList)
+}
 
 @main
 def main(): Unit = {
 
-  // TODO: dynamically initialize the first grid using width and height values
-  val init_cells: List[List[Cell]] = List(
-    List(Mijn(false), Leeg(false), Leeg(false), Leeg(false), Leeg(false)),
-    List(Leeg(false), Leeg(false), Leeg(false), Leeg(false), Leeg(false)),
-    List(Leeg(false), Leeg(false), Mijn(false), Mijn(false), Leeg(false)),
-    List(Leeg(false), Leeg(false), Leeg(false), Leeg(false), Leeg(false)),
-    List(Leeg(false), Leeg(false), Leeg(false), Leeg(false), Leeg(false))
+  val VALID_ACTIONS_STR: List[String] = List(
+    "o",
+    "m"
   )
 
-//  val height: Int = 5
-//  val width: Int = 5
+  val initGridVals = StdIn.readLine(
+    "Input width, height and amount of mines to insert. Use format width,height,num_mines: "
+  ).split(",")
 
-  var grid = GridFunc(init_cells)
+  if (initGridVals.size != 3) {
+      println(s"Provide args of the following format: width,height,num_mines. " +
+        s"You provided ${println(initGridVals)}. Example of expected args: 3,3,5")
+      return
+  }
 
-  var won: Boolean = false
-  var lost: Boolean = false
-
-  while (!won && !lost) {
-    breakable {
-      gridFuncPrint(grid)
+  val width: Int = initGridVals(0).trim.toInt
+  val height: Int = initGridVals(1).trim.toInt
+  val amntMines: Int = initGridVals(2).trim.toInt
+  val randSeed: Option[Int] = None
+  
+  def mainGameLoop(grid: Grid): GameStatus = {
+      println(s"Opened Total: ${totalOpened(grid)}")
+      // println(s"Amount To Open To Win: ${nonMineCells(grid)}")
+      gridPrint(grid)
 
       val splitInput = StdIn.readLine(
         "Input coordinates in the form action{o,m},x,y including the comma: "
       ).split(",")
 
       if (splitInput.size != 3) {
-
-        println(s"Provide args of the following format: action,x,y. Actions possible: $VALID_ACTIONS_STR")
-        break
-
+        gridPrint(grid, gameEnded = true)
+        return InvalidInput(
+          s"Provide args of the following format: action,x,y. Actions possible: $VALID_ACTIONS_STR"
+        )
       }
 
-      val action: String = splitInput(0).strip
-      val splitInputX: Int = splitInput(1).strip.toInt
-      val splitInputY: Int = splitInput(2).strip.toInt
-
-      println(s"x = $splitInputX")
-      println(s"y = $splitInputY")
+      val action: String = splitInput(0).trim
+      val splitInputX: Int = splitInput(1).trim.toInt
+      val splitInputY: Int = splitInput(2).trim.toInt
 
       action match
         case "o" =>
-          grid = openFunc(grid, splitInputX, splitInputY)
-          if (isGameWonFunc(grid)) won = true
-          else if (isGameLostFunc(grid)) lost = true
+          val newGrid = open(grid, splitInputX, splitInputY)
+          if (isGameWon(newGrid)) 
+            gridPrint(newGrid, gameEnded = true)
+            Won
+          else if (isGameLost(newGrid))
+            gridPrint(newGrid, gameEnded = true)
+            Lost
+          else
+            mainGameLoop(
+              newGrid
+            )
         case "m" => 
-          grid = markFunc(grid, splitInputX, splitInputY)
-        case _ => println(s"Invalid action provided: $action. Valid actions: $VALID_ACTIONS_STR")
-
-      println(s"Opened Total: ${totalOpenedFunc(grid)}")
-      println(s"Amount To Open To Win: ${nonMineCellsFunc(grid)}")
-    }
+          mainGameLoop(
+            mark(grid, splitInputX, splitInputY)
+          )
+        case _ => 
+          gridPrint(grid, gameEnded = true)
+          InvalidInput(s"Invalid action provided: $action. Valid actions: $VALID_ACTIONS_STR") 
   }
 
-  if (lost) {
-    println("You have lost!")
-  } else {
-    println("You have won!")
-  }
+  val gameStatus = mainGameLoop(
+    initGridRandMines(width, height, amntMines, randSeed)
+  )
 
-  gridFuncPrint(grid, gameEnded = true)
+  gameStatus match
+    case Won => println("You have won!")
+    case Lost => println("You have lost!")
+    case InvalidInput(msg) => println(msg)
 }
