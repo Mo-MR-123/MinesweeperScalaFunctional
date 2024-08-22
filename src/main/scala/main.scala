@@ -135,12 +135,12 @@ private def dfs(grid: Grid, x: Int, y: Int): Grid = {
   }
 }
 
-def updateGrid(grid: Grid, i_x: Int, i_y: Int, new_val: Cell): Grid = {
+private def updateGrid(grid: Grid, i_x: Int, i_y: Int, new_val: Cell): Grid = {
   val new_lst: List[Cell] = grid.cells(i_y).updated(i_x, new_val)
   Grid(grid.cells.take(i_y) ::: new_lst :: grid.cells.drop(i_y + 1))
 }
 
-def gridPrint(grid: Grid, gameEnded: Boolean = false): Unit = {
+private def gridPrint(grid: Grid, gameEnded: Boolean = false): Unit = {
   for (w <- grid.cells.head.indices)
     print("---")
   println()
@@ -169,7 +169,7 @@ def gridPrint(grid: Grid, gameEnded: Boolean = false): Unit = {
   println()
 }
 
-def initGrid(width: Int, height: Int, coordsMines: List[(Int, Int)]): Grid = {
+private def initGrid(width: Int, height: Int, coordsMines: List[(Int, Int)]): Grid = {
   Grid(
     (
       for (h <- 0 until height) yield 
@@ -184,7 +184,7 @@ def initGrid(width: Int, height: Int, coordsMines: List[(Int, Int)]): Grid = {
   )
 }
 
-def createRandGenerator(randSeed: Option[Int]): Random = randSeed match {
+private def createRandGenerator(randSeed: Option[Int]): Random = randSeed match {
   case Some(value) => new Random(value)
   case None => new Random
 }
