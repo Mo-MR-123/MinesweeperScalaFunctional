@@ -1,9 +1,8 @@
 package org.scala.minesweeper
 
 import org.scala.minesweeper
-import scala.util.Random
 
-import util.control.Breaks.*
+import scala.util.Random
 import scala.io.StdIn
 
 // Immutable GameStatus Classes
