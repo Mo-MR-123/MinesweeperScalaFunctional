@@ -21,7 +21,7 @@ case class Marked(cell: Cell) extends Cell
 // Immutable Grid 
 case class Grid(cells: List[List[Cell]])
 
-def mark(grid: Grid, x: Int, y: Int): Grid = {
+private def mark(grid: Grid, x: Int, y: Int): Grid = {
   grid.cells(y)(x) match {
     case Marked(cell) =>
       updateGrid(grid, x, y, cell)
@@ -42,7 +42,7 @@ private def totalOpened(grid: Grid): Int = {
   ).sum
 }
 
-private def nonMineCells(grid: Grid) = {
+private def nonMineCells(grid: Grid): Int = {
   grid.cells.map(
     arr => arr.count {
       case Mijn(_) => false
@@ -61,7 +61,7 @@ private def isGameLost(grid: Grid): Boolean = {
 }
 
 
-def open(grid: Grid, x: Int, y: Int): Grid = {
+private def open(grid: Grid, x: Int, y: Int): Grid = {
   if (NotInbounds(grid, x, y))
     return grid
 
@@ -80,7 +80,7 @@ def open(grid: Grid, x: Int, y: Int): Grid = {
   }
 }
 
-def numSurroundingMines(grid: Grid, x: Int, y: Int): List[(Int, Int)] = {
+private def numSurroundingMines(grid: Grid, x: Int, y: Int): List[(Int, Int)] = {
   val surroundingCoords = createCoordsSurroundingCells(
     grid,
     (x - 1 to x + 1).toList,
