@@ -77,15 +77,17 @@ private def open(grid: Grid, x: Int, y: Int): Grid = {
         val newGrid = updateGrid(grid, x, y, Leeg(true))
 
         val l_coords: List[(Int, Int)] = createCoordsSurroundingCells(
-          grid,
+          newGrid,
           (x - 1 to x + 1).toList,
           (y - 1 to y + 1).toList,
           (x, y)
         )
 
         // Fold over the coordinates to accumulate the updated grid
-        l_coords.foldLeft(grid) {
-          (accGrid, coord) => open(accGrid, coord._1, coord._2)
+        l_coords.foldLeft(newGrid) {
+          (accGrid, coord) => 
+            val (xb, yb) = coord
+            open(accGrid, xb, yb)
         }
       } else { // else there are surrounding mines, so just update to Nummer to show amount of mines present.
         updateGrid(grid, x, y, Nummer(cellSurroundingMines.size))
@@ -233,7 +235,7 @@ def main(): Unit = {
   @tailrec
   def mainGameLoop(grid: Grid): GameStatus = {
       println(s"Opened Total: ${totalOpened(grid)}")
-       println(s"Amount To Open To Win: ${nonMineCells(grid)}")
+      println(s"Amount To Open To Win: ${nonMineCells(grid)}")
       gridPrint(grid)
 
       val splitInput = StdIn.readLine(
