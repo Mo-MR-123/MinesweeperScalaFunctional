@@ -2,6 +2,7 @@ package org.scala.minesweeper
 
 import org.scala.minesweeper
 
+import scala.annotation.tailrec
 import scala.util.Random
 import scala.io.StdIn
 
@@ -65,18 +66,32 @@ private def open(grid: Grid, x: Int, y: Int): Grid = {
   if (NotInbounds(grid, x, y))
     return grid
 
-  val cellSurroundingMines: List[(Int, Int)] = numSurroundingMines(grid, x, y)
-  if (cellSurroundingMines.nonEmpty) {
-    updateGrid(grid, x, y, Nummer(cellSurroundingMines.size))
-  } else {
-    grid.cells(y)(x) match {
-      case Mijn(o) if !o =>
-        updateGrid(grid, x, y, Mijn(true))
-      case Leeg(o) if !o =>
+  grid.cells(y)(x) match {
+    case Mijn(o) if !o =>
+      updateGrid(grid, x, y, Mijn(true))
+    case Leeg(o) if !o =>
+      val cellSurroundingMines: List[(Int, Int)] = numSurroundingMines(grid, x, y)
+
+      // if no mines, continue opening cells using DFS
+      if (cellSurroundingMines.isEmpty) {
         val newGrid = updateGrid(grid, x, y, Leeg(true))
-        dfs(newGrid, x, y)
-      case _ => grid
-    }
+
+        val l_coords: List[(Int, Int)] = createCoordsSurroundingCells(
+          grid,
+          (x - 1 to x + 1).toList,
+          (y - 1 to y + 1).toList,
+          (x, y)
+        )
+
+        // Fold over the coordinates to accumulate the updated grid
+        l_coords.foldLeft(grid) {
+          (accGrid, coord) => open(accGrid, coord._1, coord._2)
+        }
+      } else { // else there are surrounding mines, so just update to Nummer to show amount of mines present.
+        updateGrid(grid, x, y, Nummer(cellSurroundingMines.size))
+      }
+
+    case _ => grid
   }
 }
 
@@ -88,9 +103,7 @@ private def numSurroundingMines(grid: Grid, x: Int, y: Int): List[(Int, Int)] = 
     (x, y)
   )
   surroundingCoords.filter(
-    (xb, yb) =>
-      !NotInbounds(grid, xb, yb) && (xb, yb) != (x, y) &&
-        ( grid.cells(yb)(xb) == Mijn(false) || grid.cells(yb)(xb) == Mijn(true) )
+    (xb, yb) => grid.cells(yb)(xb) == Mijn(false) || grid.cells(yb)(xb) == Mijn(true)
   )
 }
 
@@ -106,33 +119,6 @@ private def createCoordsSurroundingCells(
                                         ): List[(Int, Int)] = {
   val mapped: List[(Int, Int)] = xr.flatMap(x => yr.map(y => (x, y)))
   mapped.filter((x, y) => !NotInbounds(grid, x, y) && (x, y) != currCood)
-}
-
-private def dfs(grid: Grid, x: Int, y: Int): Grid = {
-
-  val l_coords: List[(Int, Int)] = createCoordsSurroundingCells(
-    grid,
-    (x - 1 to x + 1).toList,
-    (y - 1 to y + 1).toList,
-    (x, y)
-  )
-
-  // Fold over the coordinates to accumulate the updated grid
-  l_coords.foldLeft(grid) { (accGrid, coord) =>
-    val (xb, yb) = coord
-    val currCell = accGrid.cells(yb)(xb)
-    val surroundingMines = numSurroundingMines(accGrid, xb, yb)
-    if (surroundingMines.nonEmpty) {
-      updateGrid(accGrid, xb, yb, Nummer(surroundingMines.size))
-    } else {
-      currCell match {
-        case Leeg(o) if !o =>
-          val newGrid = updateGrid(accGrid, xb, yb, Leeg(true))
-          dfs(newGrid, xb, yb) // Recursively call with the updated grid
-        case _ => accGrid // Return the accumulator grid unchanged
-      }
-    }
-  }
 }
 
 private def updateGrid(grid: Grid, i_x: Int, i_y: Int, new_val: Cell): Grid = {
@@ -152,11 +138,11 @@ private def gridPrint(grid: Grid, gameEnded: Boolean = false): Unit = {
       val currCell = grid.cells(y)(x)
       currCell match {
         case Mijn(open) =>
-          if (open) print("MO  | ") else
-            if (gameEnded) print("  M   | ") else print("     | ")
-        case Leeg(open) => if (open) print("  O   | ") else print("     | ")
-        case Nummer(n) => print(s"N($n) | ")
-        case Marked(_) => print("F | ")
+          if (open) print(" \u1F4A  | ") else
+            if (gameEnded) print("  \u1F4A   | ") else print(s" ${(x, y)}   | ")
+        case Leeg(open) => if (open) print("     | ") else print(s" ${(x, y)}    | ")
+        case Nummer(n) => print(s"$n     | ")
+        case Marked(_) => print("F    | ")
       }
     }
 
@@ -184,11 +170,6 @@ private def initGrid(width: Int, height: Int, coordsMines: List[(Int, Int)]): Gr
   )
 }
 
-private def createRandGenerator(randSeed: Option[Int]): Random = randSeed match {
-  case Some(value) => new Random(value)
-  case None => new Random
-}
-
 def initGridRandMines(
   width: Int,
   height: Int, 
@@ -199,10 +180,18 @@ def initGridRandMines(
     amountMines < width * height, 
     s"Amount of mines to be created, $amountMines, exceeds total amount of cells in the grid (${width*height})!"
   )
+  assert (
+    amountMines > 0,
+    s"Given amount of mines cannot be less or equal to 0 ;)."
+  )
 
-  val rand = createRandGenerator(randSeed)
+  val rand: Random = randSeed match {
+    case Some(value) => new Random(value)
+    case None => new Random
+  }
 
-  def generateSetCoords(coordsSet: Set[(Int, Int)]): Set[(Int, Int)] = {  
+  @tailrec
+  def generateSetCoords(coordsSet: Set[(Int, Int)]): Set[(Int, Int)] = {
     if (coordsSet.size < amountMines) {
       val currRandomCoords: (Int, Int) = (rand.nextInt(width), rand.nextInt(height))
       generateSetCoords(coordsSet + currRandomCoords)
@@ -211,7 +200,11 @@ def initGridRandMines(
     }
   }
 
-  initGrid(width, height, generateSetCoords(Set.empty[(Int, Int)]).toList)
+  initGrid(
+    width,
+    height,
+    generateSetCoords(Set.empty[(Int, Int)]).toList
+  )
 }
 
 @main
@@ -228,7 +221,7 @@ def main(): Unit = {
 
   if (initGridVals.size != 3) {
       println(s"Provide args of the following format: width,height,num_mines. " +
-        s"You provided ${println(initGridVals)}. Example of expected args: 3,3,5")
+        s"You provided ${println(initGridVals.mkString("Array(", ", ", ")"))}. Example of expected args: 3,3,5")
       return
   }
 
@@ -237,9 +230,10 @@ def main(): Unit = {
   val amntMines: Int = initGridVals(2).trim.toInt
   val randSeed: Option[Int] = None
   
+  @tailrec
   def mainGameLoop(grid: Grid): GameStatus = {
       println(s"Opened Total: ${totalOpened(grid)}")
-      // println(s"Amount To Open To Win: ${nonMineCells(grid)}")
+       println(s"Amount To Open To Win: ${nonMineCells(grid)}")
       gridPrint(grid)
 
       val splitInput = StdIn.readLine(
