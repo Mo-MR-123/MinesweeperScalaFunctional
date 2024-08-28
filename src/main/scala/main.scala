@@ -63,7 +63,7 @@ private def isGameLost(grid: Grid): Boolean = {
 
 
 private def open(grid: Grid, x: Int, y: Int): Grid = {
-  if (NotInbounds(grid, x, y))
+  if (!inbounds(grid, x, y))
     return grid
 
   grid.cells(y)(x) match {
@@ -109,9 +109,9 @@ private def numSurroundingMines(grid: Grid, x: Int, y: Int): List[(Int, Int)] = 
   )
 }
 
-private def NotInbounds(grid: Grid, x: Int, y: Int): Boolean =
-  (y < 0 || y >= grid.cells.length) ||
-    (x < 0 || x >= grid.cells.head.length)
+private def inbounds(grid: Grid, x: Int, y: Int): Boolean =
+  (y >= 0 && y < grid.cells.length) &&
+    (x >= 0 && x < grid.cells.head.length)
 
 private def createCoordsSurroundingCells(
                                           grid: Grid,
@@ -120,7 +120,7 @@ private def createCoordsSurroundingCells(
                                           currCood: (Int, Int)
                                         ): List[(Int, Int)] = {
   val mapped: List[(Int, Int)] = xr.flatMap(x => yr.map(y => (x, y)))
-  mapped.filter((x, y) => !NotInbounds(grid, x, y) && (x, y) != currCood)
+  mapped.filter((x, y) => inbounds(grid, x, y) && (x, y) != currCood)
 }
 
 private def updateGrid(grid: Grid, i_x: Int, i_y: Int, new_val: Cell): Grid = {
@@ -142,7 +142,8 @@ private def gridPrint(grid: Grid, gameEnded: Boolean = false): Unit = {
         case Mijn(open) =>
           if (open) print(" \u1F4A  | ") else
             if (gameEnded) print("  \u1F4A   | ") else print(s" ${(x, y)}   | ")
-        case Leeg(open) => if (open) print("     | ") else print(s" ${(x, y)}    | ")
+        case Leeg(open) => if (open) print("     | ") else 
+          if (gameEnded) print("      | ") else print(s" ${(x, y)}    | ")
         case Nummer(n) => print(s"$n     | ")
         case Marked(_) => print("F    | ")
       }
